@@ -1,4 +1,13 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const getApiBaseUrl = () => {
+  let url = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").trim();
+  url = url.replace(/\/+$/, "");
+  if (!url.endsWith("/api")) {
+    url = `${url}/api`;
+  }
+  return url;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const request = async (endpoint, options = {}) => {
   const token = localStorage.getItem("thumblify_token");
@@ -12,7 +21,14 @@ const request = async (endpoint, options = {}) => {
     ...options
   });
 
-  const data = await response.json();
+  let data;
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    data = await response.json();
+  } else {
+    const text = await response.text();
+    data = { message: text || `Request failed with status ${response.status}` };
+  }
 
   if (!response.ok) {
     throw new Error(data.message || "Request failed");
