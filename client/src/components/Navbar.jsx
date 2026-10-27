@@ -19,7 +19,7 @@ const Navbar = () => {
     <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link to="/" className="text-xl font-bold tracking-wide text-white">
-          <span className="gradient-text">AI-powered</span> Thumbnail Generator
+          <span className="gradient-text">Intelligent Thumbnail Design System using Prompt Optimization and Generative AI
         </Link>
 
         <nav className="hidden items-center gap-2 md:flex">
