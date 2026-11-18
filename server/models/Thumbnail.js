@@ -58,7 +58,7 @@ const thumbnailSchema = new mongoose.Schema(
     },
     selectedModel: {
       type: String,
-      default: "flux"
+      default: "flux-realism"
     },
     youtubeReference: {
       type: mongoose.Schema.Types.Mixed,

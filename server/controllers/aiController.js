@@ -20,7 +20,7 @@ const generateThumbnail = async (req, res, next) => {
       sourceImage = "",
       changeRequest = "",
       templatePreset = "Standard",
-      selectedModel = "gemini",
+      selectedModel = "flux-realism",
       headlineText = "",
       badgeText = "",
       mode = "generate"

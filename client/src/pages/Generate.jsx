@@ -10,7 +10,7 @@ const defaultGenerateState = {
   aspectRatio: "16:9",
   style: "Bold",
   templatePreset: "High-Energy Challenge",
-  selectedModel: "gemini",
+  selectedModel: "flux-realism",
   colors: palettes[0],
   prompt: "",
   sourceImage: ""
@@ -21,7 +21,7 @@ const defaultRecreateState = {
   aspectRatio: "16:9",
   style: "Cinematic",
   templatePreset: "Minimal & Clean",
-  selectedModel: "gemini",
+  selectedModel: "flux-realism",
   colors: palettes[1],
   sourceImage: "",
   changeRequest: ""
@@ -393,7 +393,7 @@ const Generate = ({ setToast }) => {
                 <label className="mb-2 block text-sm font-bold text-white">7. AI Generation Engine</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {aiEngines.map((engine) => {
-                    const isSelected = (generateForm.selectedModel || "gemini") === engine.id;
+                    const isSelected = (generateForm.selectedModel || "flux-realism") === engine.id;
                     return (
                       <button
                         type="button"
@@ -541,7 +541,7 @@ const Generate = ({ setToast }) => {
                 <label className="mb-2 block text-sm font-bold text-white">AI Generation Engine</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {aiEngines.map((engine) => {
-                    const isSelected = (recreateForm.selectedModel || "gemini") === engine.id;
+                    const isSelected = (recreateForm.selectedModel || "flux-realism") === engine.id;
                     return (
                       <button
                         type="button"
@@ -579,7 +579,7 @@ const Generate = ({ setToast }) => {
             <div className="flex items-center gap-2">
               {preview?.selectedModel && (
                 <span className="rounded-full bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 text-xs font-bold text-cyan-300">
-                  {preview.selectedModel === "flux" ? "⚡ Flux Pro Studio" : "✨ Google Gemini AI"}
+                  ⚡ Pollinations ({preview.selectedModel})
                 </span>
               )}
               {preview?.templatePreset && (

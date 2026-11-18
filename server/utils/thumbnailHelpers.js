@@ -153,7 +153,7 @@ const optimizeWithGroq = async (payload) => {
   if (!apiKey) return null;
 
   const groq = new Groq({ apiKey });
-  const model = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+  const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
   try {
     const completion = await groq.chat.completions.create({
@@ -172,7 +172,7 @@ const optimizeWithGroq = async (payload) => {
     console.error("Groq primary model error:", error.message || error);
     try {
       const fallbackCompletion = await groq.chat.completions.create({
-        model: "openai/gpt-oss-20b",
+        model: "llama-3.1-8b-instant",
         temperature: 0.3,
         max_tokens: 2500,
         messages: [
@@ -188,47 +188,8 @@ const optimizeWithGroq = async (payload) => {
   }
 };
 
-const optimizeWithGemini = async (payload) => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-
-  const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: `${buildSystemPrompt(payload)}\n\n${buildUserMessage(payload)}` }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 800
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("Gemini API error response:", response.status, errText);
-      return null;
-    }
-
-    const data = await response.json();
-    const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    return compactPrompt(candidateText) || null;
-  } catch (err) {
-    console.error("Gemini fetch error:", err.message || err);
-    return null;
-  }
-};
-
 const optimizePrompt = async (payload) => {
-  // Step 1: In parallel, gather web intelligence & search YouTube for viral thumbnail reference
+  // Step 1: In parallel, gather topic intelligence & search YouTube for viral thumbnail reference
   const [topicResearch, youtubeRef] = await Promise.all([
     payload.topicContext
       ? Promise.resolve({ context: payload.topicContext })
@@ -257,15 +218,10 @@ const optimizePrompt = async (payload) => {
     };
   }
 
-  // 1. Primary: Groq (ultra-fast, high-capacity, photojournalism emotional reasoning)
+  // 1. Primary: Groq prompt optimization
   let prompt = await optimizeWithGroq(payload);
 
-  // 2. Secondary Fallback: Gemini
-  if (!prompt) {
-    prompt = await optimizeWithGemini(payload);
-  }
-
-  // 3. Fallback: Programmatic visual description
+  // 2. Fallback: Programmatic visual description
   if (!prompt) {
     prompt = createFallbackPrompt(payload);
   }
@@ -322,11 +278,16 @@ const canUseSourceImageForGeneration = (value) => {
 };
 
 const getModelForStyle = (style, options = {}) => {
-  if (options.model && options.model !== "flux") return options.model;
+  if (options.model && ["flux", "flux-realism", "flux-3d", "flux-anime", "turbo"].includes(options.model)) {
+    if (options.sourceImage && !options.model.includes("kontext")) {
+      return "kontext";
+    }
+    return options.model;
+  }
   if (options.sourceImage) return "kontext";
   if (style === "3D Render") return "flux-3d";
   if (style === "Anime") return "flux-anime";
-  // Use flux-realism by default for ultra-high human skin and physical object photorealism
+  // Use flux-realism by default for photorealism and high visual impact
   return "flux-realism";
 };
 
@@ -356,144 +317,8 @@ const buildImageUrl = (prompt, aspectRatio, options = {}) => {
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?${query.toString()}`;
 };
 
-const generateWithGeminiImage = async ({ prompt, aspectRatio = "16:9", style = "Bold", sourceImage = "" }) => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.log("No GEMINI_API_KEY provided for image generation");
-    return null;
-  }
-
-  // Model list to try in order
-  const customModel = process.env.GEMINI_IMAGE_MODEL;
-  const candidateModels = customModel
-    ? [customModel, "gemini-2.5-flash-image", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image", "imagen-3.0-generate-002"]
-    : ["gemini-2.5-flash-image", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image", "gemini-3-pro-image", "imagen-3.0-generate-002"];
-
-  // Parse attached source image if provided
-  let subjectImagePart = null;
-  if (sourceImage) {
-    if (sourceImage.startsWith("data:image/")) {
-      const matches = sourceImage.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-      if (matches) {
-        subjectImagePart = {
-          inlineData: {
-            mimeType: matches[1] || "image/jpeg",
-            data: matches[2]
-          }
-        };
-      }
-    } else if (/^https?:\/\//i.test(sourceImage)) {
-      try {
-        const fetchRes = await fetch(sourceImage);
-        if (fetchRes.ok) {
-          const buffer = Buffer.from(await fetchRes.arrayBuffer());
-          const mimeType = fetchRes.headers.get("content-type") || "image/jpeg";
-          subjectImagePart = {
-            inlineData: {
-              mimeType,
-              data: buffer.toString("base64")
-            }
-          };
-        }
-      } catch (err) {
-        console.warn("Failed to fetch source image for multimodal generation:", err.message || err);
-      }
-    }
-  }
-
-  // Enrich prompt for high-CTR thumbnail generation with smart subject replacement
-  const enhancedPrompt = subjectImagePart
-    ? `Generate a high-CTR professional YouTube thumbnail in ${aspectRatio} aspect ratio. Style: ${style}. Visual composition: ${prompt}. CRITICAL DIRECTIVE: Smartly replace the primary focal character/subject in the scene with the person or subject from the attached reference image. Retain their recognizable facial likeness, expression, features, and identity while seamlessly blending them into the scene with dramatic studio lighting, rich contrast, and realistic textures.`
-    : `Generate a high-CTR professional YouTube thumbnail in ${aspectRatio} aspect ratio. Style: ${style}. Visual composition: ${prompt}. Photorealistic, vibrant color grading, studio lighting, crisp 8k details, visually striking focal subject.`;
-
-  for (const model of candidateModels) {
-    try {
-      // 1. Try generateContent endpoint (standard for Gemini multimodal image models)
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const parts = [];
-      if (subjectImagePart) {
-        parts.push(subjectImagePart);
-      }
-      parts.push({ text: enhancedPrompt });
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts
-            }
-          ]
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const resParts = data.candidates?.[0]?.content?.parts || [];
-        const imagePart = resParts.find((p) => p.inlineData && p.inlineData.data);
-        if (imagePart && imagePart.inlineData.data) {
-          const mime = imagePart.inlineData.mimeType || "image/jpeg";
-          console.log(`Successfully generated thumbnail image using Gemini model: ${model}`);
-          return `data:${mime};base64,${imagePart.inlineData.data}`;
-        }
-      }
-
-      // 2. Try predict endpoint (used by Imagen models)
-      if (model.includes("imagen")) {
-        const predictUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
-        const predictRes = await fetch(predictUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            instances: [{ prompt: enhancedPrompt }],
-            parameters: {
-              sampleCount: 1,
-              aspectRatio: ["16:9", "1:1", "9:16"].includes(aspectRatio) ? aspectRatio : "16:9",
-              outputMimeType: "image/jpeg"
-            }
-          })
-        });
-
-        if (predictRes.ok) {
-          const data = await predictRes.json();
-          const base64 = data.predictions?.[0]?.bytesBase64Encoded;
-          const mime = data.predictions?.[0]?.mimeType || "image/jpeg";
-          if (base64) {
-            console.log(`Successfully generated thumbnail image using Imagen model: ${model}`);
-            return `data:${mime};base64,${base64}`;
-          }
-        }
-      }
-    } catch (err) {
-      console.warn(`Gemini image generation attempt with model ${model} failed:`, err.message || err);
-    }
-  }
-
-  return null;
-};
-
 const generateThumbnailImage = async ({ prompt, aspectRatio, options = {} }) => {
-  const isFluxRequested = options.model === "flux" || options.model === "flux-realism" || options.model === "flux-3d" || options.model === "flux-anime";
-  
-  if (!isFluxRequested) {
-    try {
-      const geminiImage = await generateWithGeminiImage({
-        prompt,
-        aspectRatio,
-        style: options.style,
-        sourceImage: options.sourceImage
-      });
-
-      if (geminiImage) {
-        return geminiImage;
-      }
-    } catch (error) {
-      console.warn("Gemini image generation failed, falling back to Pollinations Flux:", error.message || error);
-    }
-  }
-
-  // Fallback / Standard: Enhanced Pollinations Flux-Realism with enhance=true
+  // Pure Pollinations AI image generation
   return buildImageUrl(prompt, aspectRatio, options);
 };
 
@@ -523,7 +348,6 @@ const warmImageUrl = async (imageUrl, attempts = 2) => {
 module.exports = {
   optimizePrompt,
   buildImageUrl,
-  generateWithGeminiImage,
   generateThumbnailImage,
   normalizeSourceImageUrl,
   canUseSourceImageForGeneration,

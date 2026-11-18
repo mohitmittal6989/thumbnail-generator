@@ -58,16 +58,28 @@ export const sampleTopics = [
 
 export const aiEngines = [
   {
-    id: "flux",
-    label: "Flux Pro Studio (High Quality)",
-    
-    desc: "Ultra-sharp 8k rendering, realistic studio lighting, vibrant colors"
+    id: "flux-realism",
+    label: "Pollinations Flux Realism",
+    tag: "Photorealistic HD",
+    desc: "Photorealistic human skin, depth, studio lighting & crisp 8K detail"
   },
   {
-    id: "gemini",
-    label: "Google Gemini AI (Studio HD)",
-    
-    desc: "Smart facial likeness replacement with realistic human skin & depth"
+    id: "flux",
+    label: "Pollinations Flux (Vibrant)",
+    tag: "High Contrast & Vibrant",
+    desc: "Ultra-sharp rendering, vibrant colors, and dynamic YouTube CTR contrast"
+  },
+  {
+    id: "flux-3d",
+    label: "Pollinations Flux 3D",
+    tag: "3D Render & Stylized",
+    desc: "Glossy 3D Octane/Pixar stylized render with soft volumetric illumination"
+  },
+  {
+    id: "flux-anime",
+    label: "Pollinations Flux Anime",
+    tag: "Anime & Cel-Shaded",
+    desc: "Modern cel-shaded anime aesthetic, glowing particle effects & rich colors"
   }
 ];
 
